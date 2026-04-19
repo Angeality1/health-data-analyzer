@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 تطبيق ويب لتحليل بيانات الوحدات الصحية
-Health Data Analyzer - Web Application
-النسخة 3.0 (Web Version)
+Health Data Analyzer - Web Application v3.0
+مبني على النسخة Desktop المحسّنة
 """
 
 import streamlit as st
@@ -14,7 +14,6 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.util import Pt
-import base64
 
 # Page configuration
 st.set_page_config(
@@ -24,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for RTL support
+# Custom CSS for RTL and styling
 st.markdown("""
 <style>
     .main {
@@ -51,13 +50,6 @@ st.markdown("""
         border-radius: 5px;
         margin: 10px 0;
         text-align: center;
-    }
-    .info-box {
-        padding: 15px;
-        background-color: #d1ecf1;
-        border: 1px solid #bee5eb;
-        border-radius: 5px;
-        margin: 10px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -96,7 +88,7 @@ def load_excel_files(uploaded_files):
         try:
             xl = pd.ExcelFile(file)
             
-            # Find correct sheet name
+            # Find correct sheet name (handle trailing spaces)
             sheet_name = None
             for sname in xl.sheet_names:
                 if sname.strip() == 'محل سكن':
@@ -121,19 +113,15 @@ def load_excel_files(uploaded_files):
             st.error(f"❌ خطأ في قراءة الملف {file.name}: {str(e)}")
             return None
     
-    # Combine all data
+    # Combine and process
     combined = pd.concat(dataframes, ignore_index=True)
-    
-    # Merge related units
     combined = merge_related_units(combined)
-    
-    # Filter for محلة ثان
     district_data = combined[combined['ResidenceDistrict'] == 'محلة ثانى'].copy()
     
     return district_data
 
 def fill_cover_slide(prs, unit_name, data):
-    """Fill cover slide"""
+    """Fill cover slide with improved formatting"""
     slide = prs.slides[0]
     
     min_date = data['reptdate_gen'].min() if 'reptdate_gen' in data.columns else None
@@ -152,7 +140,7 @@ def fill_cover_slide(prs, unit_name, data):
                 p.font.bold = True
                 p.alignment = 1
                 
-            elif 'الادارة الصحية ثان' in text:
+            elif 'الادارة الصحية ثان' in text or 'من 1/1' in text:
                 if pd.notna(min_date) and pd.notna(max_date):
                     start = pd.to_datetime(min_date).strftime("%d/%m/%Y")
                     end = pd.to_datetime(max_date).strftime("%d/%m/%Y")
@@ -166,7 +154,7 @@ def fill_cover_slide(prs, unit_name, data):
                     p.alignment = 1
 
 def fill_info_slide(prs, unit_name, data, monitor, supervisor, director):
-    """Fill info slide"""
+    """Fill info slide with improved formatting"""
     slide = prs.slides[1]
     
     min_date = data['reptdate_gen'].min() if 'reptdate_gen' in data.columns else None
@@ -216,7 +204,7 @@ def fill_info_slide(prs, unit_name, data, monitor, supervisor, director):
                     p.font.bold = True
                     p.alignment = 1
     
-    # Update staff names
+    # Update staff names by shape index
     if len(slide.shapes) > 8 and slide.shapes[8].has_text_frame:
         shape = slide.shapes[8]
         shape.text_frame.clear()
@@ -245,7 +233,7 @@ def fill_info_slide(prs, unit_name, data, monitor, supervisor, director):
         p.font.bold = True
 
 def fill_demographic_slide(prs, unit_name, population, villages):
-    """Fill demographic slide"""
+    """Fill demographic slide with improved formatting"""
     slide = prs.slides[2]
     
     for shape in slide.shapes:
@@ -288,9 +276,9 @@ def update_chart(slide, categories, values, series_name):
             break
 
 def generate_report(data, unit_name, population, villages, monitor, supervisor, director):
-    """Generate PowerPoint report"""
+    """Generate PowerPoint report with all improvements"""
     
-    # Load template from same directory
+    # Load template
     template_path = Path(__file__).parent / 'template.pptx'
     if not template_path.exists():
         st.error("❌ لم يتم العثور على قالب PowerPoint")
@@ -299,7 +287,7 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
     try:
         prs = Presentation(str(template_path))
         
-        # Filter Q1 data
+        # Filter Q1 data (including weeks 52, 53)
         q1_data = data[
             (data['Month'].isin([1, 2, 3])) | 
             (data['Week'].isin([52, 53]))
@@ -309,46 +297,46 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
             st.warning("⚠️ لا توجد بيانات للربع الأول")
             return None
         
-        # Fill slides
+        # Fill slides with improved formatting
         fill_cover_slide(prs, unit_name, q1_data)
         fill_info_slide(prs, unit_name, q1_data, monitor, supervisor, director)
         fill_demographic_slide(prs, unit_name, population, villages)
         
-        # Fill charts
-        # Gender chart
+        # Fill all charts
+        # Gender chart (slide 4)
         gender_counts = q1_data['Sex'].value_counts()
         categories = ['ذكر', 'أنثى']
         values = [int(gender_counts.get('ذكر', 0)), int(gender_counts.get('أنثى', 0))]
         update_chart(prs.slides[3], categories, values, 'العدد')
         
-        # Department chart
+        # Department chart (slide 5)
         dept_counts = q1_data['Department'].value_counts()
         update_chart(prs.slides[4], dept_counts.index.tolist()[:10], 
                     [int(v) for v in dept_counts.values.tolist()[:10]], 'العدد')
         
-        # Outcome chart
+        # Outcome chart (slide 6)
         outcome_counts = q1_data['Outcome'].value_counts()
         update_chart(prs.slides[5], outcome_counts.index.tolist()[:10],
                     [int(v) for v in outcome_counts.values.tolist()[:10]], 'العدد')
         
-        # Status chart
+        # Status chart (slide 7)
         status_counts = q1_data['status'].value_counts()
         update_chart(prs.slides[6], status_counts.index.tolist()[:10],
                     [int(v) for v in status_counts.values.tolist()[:10]], 'العدد')
         
-        # Disease chart
+        # Disease chart (slide 8)
         disease_counts = q1_data['disease'].value_counts()
         update_chart(prs.slides[7], disease_counts.index.tolist()[:10],
                     [int(v) for v in disease_counts.values.tolist()[:10]], 'العدد')
         
-        # Age chart
+        # Age chart (slide 9)
         age_counts = q1_data['AgeGroup'].value_counts()
         age_order = ['[0-2]', '[>2-5]', '[>5-15]', '[>15-35]', '[>35-50]', '[>50-65]', '[>65]']
         categories = [ag for ag in age_order if ag in age_counts.index]
         values = [int(age_counts.get(ag, 0)) for ag in categories]
         update_chart(prs.slides[8], categories, values, 'العدد')
         
-        # Weekly chart
+        # Weekly chart (slide 10)
         week_counts = q1_data['Week'].value_counts().sort_index()
         all_weeks = []
         if 52 in week_counts.index:
@@ -360,7 +348,7 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
         values = [int(week_counts.get(w, 0)) for w in all_weeks if w in week_counts.index]
         update_chart(prs.slides[9], categories, values, 'العدد')
         
-        # Monthly chart
+        # Monthly chart (slide 11)
         month_counts = q1_data['Month'].value_counts().sort_index()
         month_names = {1: 'يناير', 2: 'فبراير', 3: 'مارس'}
         categories = [month_names.get(m, f"شهر {m}") for m in [1, 2, 3] if m in month_counts.index]
@@ -393,13 +381,14 @@ def main():
         
         **المميزات:**
         - ✅ يعمل على الجوال والكمبيوتر
-        - ✅ لا يحتاج تحميل
-        - ✅ سهل الاستخدام
+        - ✅ دمج الوحدات المرتبطة
+        - ✅ معالجة الأسابيع 52 و 53
+        - ✅ تنسيق محسّن للشرائح
         - ✅ تقارير احترافية
         """)
         
         st.markdown("---")
-        st.markdown("### 📞 الدعم الفني")
+        st.markdown("### 📞 الدعم")
         st.markdown("للمساعدة: راجع دليل الاستخدام")
     
     # Step 1: Upload Files
@@ -414,7 +403,6 @@ def main():
     if uploaded_files:
         st.success(f"✅ تم رفع {len(uploaded_files)} ملف")
         
-        # Load data button
         if st.button("📊 تحميل وتحليل البيانات", key="load_data"):
             with st.spinner("جاري تحميل البيانات..."):
                 data = load_excel_files(uploaded_files)
@@ -422,7 +410,7 @@ def main():
                 if data is not None:
                     st.session_state.combined_data = data
                     
-                    # Get unique units
+                    # Get unique units and add "all" option
                     units = sorted(data['HealthOffice'].dropna().unique())
                     units.insert(0, "المحلة ثان (كاملة)")
                     st.session_state.health_units = units
@@ -461,7 +449,7 @@ def main():
         st.markdown("---")
         st.markdown("### 4️⃣ إنشاء التقرير")
         
-        if st.button("📄 إنشاء تقرير PowerPoint", key="generate_report", type="primary"):
+        if st.button("📄 إنشاء تقرير PowerPoint", key="generate", type="primary"):
             with st.spinner("جاري إنشاء التقرير... قد يستغرق دقيقة"):
                 
                 # Get data for selected unit
