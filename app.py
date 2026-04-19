@@ -134,11 +134,11 @@ def fill_cover_slide(prs, unit_name, data):
             if 'وحده الوبائيات و الترصد' in text:
                 shape.text_frame.clear()
                 p = shape.text_frame.paragraphs[0]
-                p.text = f"الإدارة الصحية بالمحلة الكبرى ثان\nالقسم الوقائي\nوحده الوبائيات و الترصد بوحده\n{unit_name}"
+                p.text = f"الإدارة الصحية بالمحلة الكبرى ثان\nالقسم الوقائي\nوحده الوبائيات و الترصد \n{unit_name}"
                 p.font.name = 'Times New Roman (Headings)'
-                p.font.size = Pt(40)
+                p.font.size = Pt(30)
                 p.font.bold = True
-                p.alignment = 1
+                p.alignment = 2
                 
             elif 'الادارة الصحية ثان' in text or 'من 1/1' in text:
                 if pd.notna(min_date) and pd.notna(max_date):
@@ -245,9 +245,9 @@ def fill_demographic_slide(prs, unit_name, population, villages):
                 p = shape.text_frame.paragraphs[0]
                 p.text = f"البيانات الديموغرافية بـ{unit_name} بالإدارة الصحية المحلة ثان"
                 p.font.name = 'Arial (Body)'
-                p.font.size = Pt(20)
+                p.font.size = Pt(18)
                 p.font.bold = True
-                p.alignment = 1
+                p.alignment = 3
             
             elif 'عــــدد السكـــان التقديري' in text:
                 shape.text_frame.clear()
