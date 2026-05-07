@@ -287,14 +287,11 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
     try:
         prs = Presentation(str(template_path))
         
-        # Filter Q1 data (including weeks 52, 53)
-        q1_data = data[
-            (data['Month'].isin([1, 2, 3])) | 
-            (data['Week'].isin([52, 53]))
-        ].copy()
+        # Use all available data (no month/quarter restriction)
+        q1_data = data.copy()
         
         if len(q1_data) == 0:
-            st.warning("⚠️ لا توجد بيانات للربع الأول")
+            st.warning("⚠️ لا توجد بيانات في الملف المحدد")
             return None
         
         # Fill slides with improved formatting
@@ -350,9 +347,12 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
         
         # Monthly chart (slide 11)
         month_counts = q1_data['Month'].value_counts().sort_index()
-        month_names = {1: 'يناير', 2: 'فبراير', 3: 'مارس'}
-        categories = [month_names.get(m, f"شهر {m}") for m in [1, 2, 3] if m in month_counts.index]
-        values = [int(month_counts.get(m, 0)) for m in [1, 2, 3] if m in month_counts.index]
+        month_names = {1: 'يناير', 2: 'فبراير', 3: 'مارس', 4: 'أبريل',
+                       5: 'مايو', 6: 'يونيو', 7: 'يوليو', 8: 'أغسطس',
+                       9: 'سبتمبر', 10: 'أكتوبر', 11: 'نوفمبر', 12: 'ديسمبر'}
+        available_months = sorted(month_counts.index.tolist())
+        categories = [month_names.get(m, f"شهر {m}") for m in available_months]
+        values = [int(month_counts.get(m, 0)) for m in available_months]
         update_chart(prs.slides[10], categories, values, 'العدد')
         
         # Save to BytesIO
@@ -492,10 +492,7 @@ def main():
                     st.markdown("---")
                     st.markdown("### 📊 إحصائيات التقرير")
                     
-                    q1_data = unit_data[
-                        (unit_data['Month'].isin([1, 2, 3])) | 
-                        (unit_data['Week'].isin([52, 53]))
-                    ]
+                    q1_data = unit_data
                     
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("إجمالي السجلات", len(q1_data))
