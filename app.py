@@ -335,14 +335,16 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
         
         # Weekly chart (slide 10)
         week_counts = q1_data['Week'].value_counts().sort_index()
+        # Sort weeks: put 52, 53 first (end of previous year), then rest in order
         all_weeks = []
         if 52 in week_counts.index:
             all_weeks.append(52)
         if 53 in week_counts.index:
             all_weeks.append(53)
-        all_weeks.extend(range(1, 14))
-        categories = [f"أسبوع {w}" for w in all_weeks if w in week_counts.index]
-        values = [int(week_counts.get(w, 0)) for w in all_weeks if w in week_counts.index]
+        regular_weeks = sorted([w for w in week_counts.index if w not in (52, 53)])
+        all_weeks.extend(regular_weeks)
+        categories = [f"أسبوع {w}" for w in all_weeks]
+        values = [int(week_counts.get(w, 0)) for w in all_weeks]
         update_chart(prs.slides[9], categories, values, 'العدد')
         
         # Monthly chart (slide 11)
