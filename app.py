@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 تطبيق ويب لتحليل بيانات الوحدات الصحية
-Health Data Analyzer - Web Application v3.0
+Health Data Analyzer - Web Application v4.0
 مبني على النسخة Desktop المحسّنة
 """
 
@@ -14,6 +14,13 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.util import Pt
+import re
+import daily_slide
+
+APP_VERSION = "4.0"
+APP_UPDATED = "07/11/2026"
+SUPPORT_PHONE = "01559600495"
+SUPPORT_WA = "https://wa.me/201559600495"
 
 # Page configuration
 st.set_page_config(
@@ -43,6 +50,10 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
     }
+    .block-container { padding-top: 2rem; max-width: 1100px; }
+    section[data-testid="stSidebar"] { direction: rtl; text-align: right; }
+    div[data-testid="stMetric"] { background: #f4f8fc; border: 1px solid #dbe7f3; border-radius: 10px; padding: 10px 14px; }
+    .stButton>button:hover { background-color: #145a8d; color: #fff; }
     .success-box {
         padding: 20px;
         background-color: #d4edda;
@@ -78,46 +89,83 @@ def merge_related_units(df):
     df['HealthOffice'] = df['HealthOffice'].replace(unit_mapping)
     return df
 
+def _nk(s):
+    """مفتاح مقارنة للنصوص العربية: يزيل المسافات والرموز و«ال» ويوحّد الألف والياء والتاء المربوطة"""
+    s = re.sub(r"[\s_\-\u00a0]+", "", str(s))
+    s = re.sub("[أإآ]", "ا", s).replace("ى", "ي").replace("ة", "ه")
+    return s.replace("ال", "")
+
+
+def _pick_sheets(sheet_names):
+    """يرجع (شيت محل السكن، شيت الحالات الخارجية، شيت مصدر الإبلاغ). يقبل: «محل سكن» و«محل السكن» و«محل_سكن» بأي مسافات."""
+    res = ext = src = None
+    for s in sheet_names:
+        k = _nk(s)
+        if k == "محلسكن" and res is None: res = s
+        elif k.startswith("محلسكن") and "خارج" in k and ext is None: ext = s
+        elif ("مصدر" in k and "ابلاغ" in k) and src is None: src = s
+    return res, ext, src
+
+
+def _read_sheet(xl, sheet):
+    """يقرأ الشيت ويكتشف صف العناوين تلقائياً (حتى لو سبقه عنوان للصفحة أو صفوف فارغة)"""
+    raw = pd.read_excel(xl, sheet_name=sheet, header=None, nrows=30)
+    hdr = None
+    for i in range(len(raw)):
+        vals = [str(v).strip() for v in raw.iloc[i].tolist()]
+        if "ResidenceDistrict" in vals and "HealthOffice" in vals:
+            hdr = i
+            break
+    if hdr is None:
+        return None
+    df = pd.read_excel(xl, sheet_name=sheet, header=hdr)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df.dropna(how="all")
+
+
 def load_excel_files(uploaded_files):
-    """Load and process Excel files"""
-    required_cols = ['ResidenceDistrict', 'HealthOffice', 'Sex', 'disease', 
+    """Load and process Excel files (v4.0: sheet names and header row are detected automatically)"""
+    required_cols = ['ResidenceDistrict', 'HealthOffice', 'Sex', 'disease',
                      'status', 'Outcome', 'Department', 'AgeGroup', 'Month', 'Week']
-    
+
     dataframes = []
+    st.session_state.load_notes = []
     for file in uploaded_files:
         try:
             xl = pd.ExcelFile(file)
-            
-            # Find correct sheet name (handle trailing spaces)
-            sheet_name = None
-            for sname in xl.sheet_names:
-                if sname.strip() == 'محل سكن':
-                    sheet_name = sname
-                    break
-            
-            if not sheet_name:
-                st.error(f"❌ الملف {file.name} لا يحتوي على شيت 'محل سكن'")
+            res, ext, src = _pick_sheets(xl.sheet_names)
+            parts, used = [], []
+            if res:
+                parts.append(_read_sheet(xl, res)); used.append(res.strip())
+            elif src:  # ملف الترصد المحلي: مصدر الإبلاغ (الداخلي) + شيت الحالات الخارجية
+                parts.append(_read_sheet(xl, src)); used.append(src.strip())
+            else:
+                st.error(f"❌ الملف {file.name}: لم أجد شيت «محل سكن» (ولا «محل السكن»). الشيتات الموجودة: {', '.join(s.strip() for s in xl.sheet_names)}")
                 return None
-            
-            df = pd.read_excel(xl, sheet_name=sheet_name)
-            
-            # Verify columns
+            if ext:
+                parts.append(_read_sheet(xl, ext)); used.append(ext.strip())
+            if any(p is None for p in parts):
+                st.error(f"❌ الملف {file.name}: لم أجد صف العناوين (ResidenceDistrict / HealthOffice) في أول 30 صفاً من الشيت.")
+                return None
+            df = pd.concat(parts, ignore_index=True)
+
             missing = [c for c in required_cols if c not in df.columns]
             if missing:
                 st.error(f"❌ الملف {file.name} ينقصه الأعمدة: {', '.join(missing)}")
                 return None
-            
+
+            st.session_state.load_notes.append(f"{file.name}: الشيت المستخدم «{' + '.join(used)}» ({len(df)} سجل)")
             dataframes.append(df)
-            
+
         except Exception as e:
             st.error(f"❌ خطأ في قراءة الملف {file.name}: {str(e)}")
             return None
-    
+
     # Combine and process
     combined = pd.concat(dataframes, ignore_index=True)
     combined = merge_related_units(combined)
-    district_data = combined[combined['ResidenceDistrict'] == 'محلة ثانى'].copy()
-    
+    district_data = combined[combined['ResidenceDistrict'].map(_nk) == _nk('محلة ثانى')].copy()
+
     return district_data
 
 def fill_cover_slide(prs, unit_name, data):
@@ -356,6 +404,14 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
         categories = [month_names.get(m, f"شهر {m}") for m in available_months]
         values = [int(month_counts.get(m, 0)) for m in available_months]
         update_chart(prs.slides[10], categories, values, 'العدد')
+
+        # Daily analysis slide (v4.0): daily cases + registration date + delay curve, all on the same dates
+        if 'reptdate_gen' in q1_data.columns:
+            ok_daily, info_daily = daily_slide.add_daily_slide(prs, q1_data, after_index=9)
+            if not ok_daily:
+                st.warning(f"⚠️ لم تُضَف شريحة التحليل اليومي: {info_daily}")
+        else:
+            st.warning("⚠️ لم تُضَف شريحة التحليل اليومي: عمود reptdate_gen غير موجود في الملف")
         
         # Save to BytesIO
         output = io.BytesIO()
@@ -378,28 +434,32 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("### 📋 معلومات التطبيق")
-        st.info("""
-        **النسخة:** 3.0 (Web)
-        
+        st.info(f"""
+        **النسخة:** {APP_VERSION} (Web)
+
+        **آخر تحديث:** {APP_UPDATED}
+
         **المميزات:**
         - ✅ يعمل على الجوال والكمبيوتر
+        - ✅ يقبل «محل سكن» و«محل السكن» ويكتشف صف العناوين تلقائياً
         - ✅ دمج الوحدات المرتبطة
         - ✅ معالجة الأسابيع 52 و 53
-        - ✅ تنسيق محسّن للشرائح
+        - ✅ شريحة التحليل اليومي (كل الأيام حتى الجمعة + منحنى التأخير بين التسجيل والإبلاغ)
         - ✅ تقارير احترافية
         """)
-        
+
         st.markdown("---")
         st.markdown("### 📞 الدعم")
-        st.markdown("للمساعدة: راجع دليل الاستخدام")
-    
+        st.markdown(f"للمساعدة والاستفسار اتصل أو راسل على واتساب: **{SUPPORT_PHONE}**")
+        st.markdown(f"[💬 مراسلة على واتساب]({SUPPORT_WA})")
+
     # Step 1: Upload Files
     st.markdown("### 1️⃣ رفع ملفات Excel")
     uploaded_files = st.file_uploader(
         "اختر ملفات Excel (شهر أو ربع سنوي)",
         type=['xlsx', 'xls'],
         accept_multiple_files=True,
-        help="يمكنك رفع ملف واحد (شهري) أو 3 ملفات (ربع سنوي)"
+        help="ملف واحد (شهري) أو 3 ملفات (ربع سنوي). يُقرأ شيت «محل سكن» (أو «محل السكن») تلقائياً"
     )
     
     if uploaded_files:
@@ -418,7 +478,14 @@ def main():
                     st.session_state.health_units = units
                     st.session_state.data_loaded = True
                     
-                    st.success(f"✅ تم تحميل {len(data)} سجل من {len(units)} وحدة صحية")
+                    st.success(f"✅ تم تحميل {len(data)} سجل من {len(units) - 1} وحدة صحية")
+                    for note in st.session_state.get('load_notes', []):
+                        st.caption("📄 " + note)
+                    if 'reptdate_gen' in data.columns:
+                        d0 = pd.to_datetime(data['reptdate_gen'], errors='coerce').min()
+                        d1 = pd.to_datetime(data['reptdate_gen'], errors='coerce').max()
+                        if pd.notna(d0) and pd.notna(d1):
+                            st.caption(f"📅 الفترة: من {d0:%d/%m/%Y} إلى {d1:%d/%m/%Y}")
                     st.balloons()
     
     # Step 2: Select Unit
