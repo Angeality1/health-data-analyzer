@@ -17,7 +17,7 @@ from pptx.util import Pt
 import re
 import daily_slide
 
-APP_VERSION = "4.0"
+APP_VERSION = "4.2"
 APP_UPDATED = "07/11/2026"
 SUPPORT_PHONE = "01559600495"
 SUPPORT_WA = "https://wa.me/201559600495"
@@ -30,46 +30,90 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for RTL and styling
-st.markdown("""
+# Custom CSS: surveillance-themed look (v4.2) — RTL, gradient backgrounds, cards, coloured sidebar
+CSS = """
 <style>
-    .main {
-        direction: rtl;
-        text-align: right;
-    }
-    h1, h2, h3 {
-        text-align: center;
-        color: #1f77b4;
-    }
-    .stButton>button {
-        width: 100%;
-        background-color: #1f77b4;
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-        padding: 10px;
-        border-radius: 5px;
-    }
-    .block-container { padding-top: 2rem; max-width: 1100px; }
-    section[data-testid="stSidebar"] { direction: rtl; text-align: right; }
-    div[data-testid="stMetric"] { background: #f4f8fc; border: 1px solid #dbe7f3; border-radius: 10px; padding: 10px 14px; }
-    .stButton>button:hover { background-color: #145a8d; color: #fff; }
-    .success-box {
-        padding: 20px;
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        margin: 10px 0;
-        text-align: center;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+.stMarkdown, .stMarkdown *, label, button p, input, textarea, [data-baseweb="select"] *, .stCaption, h1, h2, h3 { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; }
+.stApp {
+    background:
+        radial-gradient(circle at 10% 6%, rgba(27,153,139,.16), transparent 36%),
+        radial-gradient(circle at 92% 18%, rgba(31,95,168,.16), transparent 40%),
+        radial-gradient(circle at 50% 100%, rgba(232,113,10,.07), transparent 45%),
+        linear-gradient(160deg, #eaf4fb 0%, #f8fcff 48%, #ebf7f2 100%);
+}
+.stApp::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .9;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><g fill='none' stroke='%231f5fa8' stroke-opacity='.07' stroke-width='2'><path d='M48 38v20M38 48h20'/><circle cx='14' cy='14' r='4'/><circle cx='82' cy='76' r='3'/><path d='M8 80l6-8 6 8 6-8'/></g></svg>");
+}
+[data-testid="stMain"], .main { direction: rtl; text-align: right; }
+.block-container { padding-top: 1.2rem; max-width: 1150px; position: relative; z-index: 1; }
+header[data-testid="stHeader"] { background: transparent; }
+
+/* ---- banner ---- */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 28px 34px 56px; margin-bottom: 22px; color: #fff;
+    background: linear-gradient(120deg, #0b3c5d 0%, #145a8d 48%, #1b998b 100%); box-shadow: 0 14px 34px rgba(11,60,93,.28); }
+.hero::after { content: ""; position: absolute; width: 340px; height: 340px; left: -90px; top: -150px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.20), transparent 70%); }
+.hero-badge { display: inline-block; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); padding: 4px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+.hero h1 { color: #fff !important; text-align: right !important; font-size: 2.1rem; font-weight: 800; margin: 12px 0 4px; padding: 0; }
+.hero-sub { margin: 0 0 12px; opacity: .93; font-size: 1.05rem; }
+.chips span { display: inline-block; margin-left: 8px; background: rgba(0,0,0,.22); padding: 3px 12px; border-radius: 999px; font-size: 13px; }
+.ecg { position: absolute; right: 0; left: 0; bottom: 4px; width: 100%; height: 54px; opacity: .85; }
+.ecg polyline { fill: none; stroke: #8ff7de; stroke-width: 3; stroke-linejoin: round; stroke-dasharray: 1500; stroke-dashoffset: 1500; animation: ecgdash 5s linear infinite; filter: drop-shadow(0 0 4px #5ef0cf); }
+@keyframes ecgdash { to { stroke-dashoffset: 0; } }
+
+/* ---- cards & steps ---- */
+div[class*="st-key-card_"] { background: rgba(255,255,255,.93); border: 1px solid #d3e4f1; border-radius: 18px; box-shadow: 0 8px 24px rgba(11,60,93,.09); padding: 1.1rem 1.4rem 1.3rem; margin-bottom: 18px; }
+.step { display: flex; align-items: center; gap: 14px; margin: 2px 0 14px; direction: rtl; }
+.step .num { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #fff;
+    background: linear-gradient(135deg, #1f5fa8, #1b998b); box-shadow: 0 4px 12px rgba(31,95,168,.35); }
+.step .st-title { font-weight: 800; font-size: 1.25rem; color: #0b3c5d; }
+.step .st-sub { font-size: .92rem; color: #5b7a92; margin-top: 1px; }
+div[data-testid="stMetric"] { background: linear-gradient(160deg, #ffffff, #f0f7fd); border: 1px solid #d3e4f1; border-top: 4px solid #1b998b; border-radius: 14px; padding: 10px 14px; box-shadow: 0 3px 10px rgba(11,60,93,.06); }
+div[data-testid="stMetricLabel"] { color: #4d6b84; }
+div[data-testid="stMetricValue"] { color: #0b3c5d; font-weight: 800; }
+.stButton > button, .stDownloadButton > button, [data-testid="stButton"] button, [data-testid="stDownloadButton"] button { width: 100%; border: 0; border-radius: 12px; padding: 12px 10px; font-size: 18px; font-weight: 700; color: #fff;
+    background: linear-gradient(120deg, #1f5fa8, #1b998b); box-shadow: 0 6px 16px rgba(31,95,168,.28); transition: transform .12s, box-shadow .12s; }
+.stButton > button:hover, .stDownloadButton > button:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(31,95,168,.36); }
+.success-box { padding: 22px; margin: 6px 0 12px; text-align: center; border-radius: 16px; color: #0b3c5d; font-weight: 700;
+    background: linear-gradient(135deg, #d9f5ec, #e3f0fb); border: 1px solid #b4e3d3; box-shadow: 0 6px 18px rgba(27,153,139,.18); }
+[data-testid="stFileUploader"] section { border: 2px dashed #5aa6d6; border-radius: 14px; background: #f3f9fe; }
+
+/* ---- sidebar ---- */
+section[data-testid="stSidebar"] { direction: rtl; text-align: right; background: linear-gradient(185deg, #0b3c5d 0%, #145a8d 58%, #1b998b 130%); }
+section[data-testid="stSidebar"] * { color: #eaf6ff; }
+.sb-card { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+.sb-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+.sb-badge { display: inline-block; background: #1b998b; color: #fff !important; padding: 2px 11px; border-radius: 999px; font-weight: 700; font-size: 13px; margin-left: 6px; }
+.sb-badge2 { display: inline-block; background: rgba(0,0,0,.25); padding: 2px 11px; border-radius: 999px; font-size: 13px; }
+.sb-card ul { margin: 6px 0 0; padding-right: 18px; font-size: .93rem; line-height: 1.8; }
+.sb-phone { font-size: 1.5rem; font-weight: 800; letter-spacing: 1px; direction: ltr; text-align: center; margin: 6px 0; }
+.sb-wa { display: block; text-align: center; background: #25d366; color: #fff !important; font-weight: 800; padding: 8px; border-radius: 10px; text-decoration: none; }
+.footer { text-align: center; color: #6c8aa1; font-size: .85rem; margin: 22px 0 6px; }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS, unsafe_allow_html=True)
+
+HERO_HTML = """
+<div class="hero">
+  <span class="hero-badge">🛡️ الترصد الوبائي</span>
+  <h1>منظومة تحليل بيانات الترصد الوبائي</h1>
+  <p class="hero-sub">الإدارة الصحية بالمحلة الكبرى ثان · القسم الوقائي · وحدة الوبائيات والترصد</p>
+  <div class="chips"><span>الإصدار %VERSION%</span><span>آخر تحديث %UPDATED%</span><span>التحليل حسب محل السكن</span></div>
+  <svg class="ecg" viewBox="0 0 800 100" preserveAspectRatio="none"><polyline points="0,60 90,60 120,60 140,22 160,96 182,40 202,60 330,60 360,60 380,14 402,98 424,50 444,60 560,60 590,60 610,28 630,92 652,52 672,60 800,60"/></svg>
+</div>
+""".replace("%VERSION%", APP_VERSION).replace("%UPDATED%", APP_UPDATED)
 
 # Initialize session state
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 if 'combined_data' not in st.session_state:
     st.session_state.combined_data = None
+if 'report' not in st.session_state:
+    st.session_state.report = None
+if 'load_info' not in st.session_state:
+    st.session_state.load_info = None
 if 'health_units' not in st.session_state:
     st.session_state.health_units = []
 
@@ -86,7 +130,9 @@ def merge_related_units(df):
         'مستشفى تكامل الهياتم': 'مركز طب اسرة الهياتم',
         'وحدة بلهارسيا القيراطية': 'وحدة القيراطية'
     }
-    df['HealthOffice'] = df['HealthOffice'].replace(unit_mapping)
+    squeeze = lambda t: re.sub(r'\s+', ' ', str(t)).strip()
+    unit_mapping = {squeeze(k): v for k, v in unit_mapping.items()}
+    df['HealthOffice'] = df['HealthOffice'].map(lambda t: squeeze(t) if pd.notna(t) else t).replace(unit_mapping)
     return df
 
 def _nk(s):
@@ -424,152 +470,219 @@ def generate_report(data, unit_name, population, villages, monitor, supervisor, 
         st.error(f"❌ خطأ في إنشاء التقرير: {str(e)}")
         return None
 
-# Main App
-def main():
-    # Header
-    st.markdown("<h1>🏥 برنامج تحليل بيانات الوحدات الصحية</h1>", unsafe_allow_html=True)
-    st.markdown("<h3>الإدارة الصحية بالمحلة الكبرى ثان - القسم الوقائي</h3>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    # Sidebar
+# Main App (v4.2)
+ALL_LABEL = "المحلة ثان (كاملة)"
+
+
+def stretch(fn, *args, **kwargs):
+    """عرض كامل للعنصر: width='stretch' في النسخ الحديثة وuse_container_width في الأقدم"""
+    try:
+        return fn(*args, width="stretch", **kwargs)
+    except Exception:
+        return fn(*args, use_container_width=True, **kwargs)
+
+
+def card(key):
+    """بطاقة بإطار (تتوافق مع نسخ Streamlit الأقدم)"""
+    try:
+        return st.container(border=True, key=f"card_{key}")
+    except TypeError:
+        try:
+            return st.container(border=True)
+        except TypeError:
+            return st.container()
+
+
+def step(n, title, sub=""):
+    st.markdown(f"<div class='step'><div class='num'>{n}</div><div><div class='st-title'>{title}</div>"
+                + (f"<div class='st-sub'>{sub}</div>" if sub else "") + "</div></div>", unsafe_allow_html=True)
+
+
+def period_of(df):
+    if 'reptdate_gen' not in df.columns:
+        return None, None
+    d = pd.to_datetime(df['reptdate_gen'], errors='coerce', utc=True).dt.tz_localize(None)
+    return d.min(), d.max()
+
+
+def slice_unit(selected_unit):
+    df = st.session_state.combined_data
+    if selected_unit == ALL_LABEL:
+        return df.copy(), "إدارة المحلة ثان كاملة"
+    return df[df['HealthOffice'] == selected_unit].copy(), selected_unit
+
+
+def render_sidebar():
     with st.sidebar:
-        st.markdown("### 📋 معلومات التطبيق")
-        st.info(f"""
-        **النسخة:** {APP_VERSION} (Web)
+        st.markdown(f"""
+        <div class="sb-card">
+            <div class="sb-title">🏥 تحليل بيانات الترصد</div>
+            <span class="sb-badge">النسخة {APP_VERSION}</span><span class="sb-badge2">{APP_UPDATED}</span>
+        </div>
+        <div class="sb-card">
+            <b>✨ المميزات</b>
+            <ul>
+                <li>يعمل على الجوال والكمبيوتر</li>
+                <li>يقبل «محل سكن» و«محل السكن» ويكتشف صف العناوين</li>
+                <li>دمج الوحدات المرتبطة</li>
+                <li>معالجة الأسابيع 52 و 53</li>
+                <li>شريحة التحليل اليومي: خطان (تاريخ الإبلاغ وتاريخ التسجيل) لكل الأيام حتى الجمعة</li>
+                <li>معاينة سريعة قبل إنشاء التقرير</li>
+            </ul>
+        </div>
+        <div class="sb-card">
+            <b>📞 الدعم الفني</b>
+            <div class="sb-phone">{SUPPORT_PHONE}</div>
+            <a class="sb-wa" href="{SUPPORT_WA}" target="_blank">💬 مراسلة على واتساب</a>
+        </div>
+        """, unsafe_allow_html=True)
 
-        **آخر تحديث:** {APP_UPDATED}
 
-        **المميزات:**
-        - ✅ يعمل على الجوال والكمبيوتر
-        - ✅ يقبل «محل سكن» و«محل السكن» ويكتشف صف العناوين تلقائياً
-        - ✅ دمج الوحدات المرتبطة
-        - ✅ معالجة الأسابيع 52 و 53
-        - ✅ شريحة التحليل اليومي (كل الأيام حتى الجمعة + منحنى التأخير بين التسجيل والإبلاغ)
-        - ✅ تقارير احترافية
-        """)
+def show_preview(unit_data):
+    """معاينة التحليل اليومي (خطان) قبل إنشاء التقرير"""
+    if 'reptdate_gen' not in unit_data.columns:
+        st.info("لا يوجد عمود reptdate_gen: لن تُضاف شريحة التحليل اليومي.")
+        return
+    fr = daily_slide.daily_frame(unit_data)
+    if fr is None or not len(fr):
+        st.info("لا توجد تواريخ إبلاغ صالحة للمعاينة.")
+        return
+    chart_df = pd.DataFrame({"تاريخ الإبلاغ": fr['report_n'].values, "تاريخ التسجيل": fr['insert_n'].values}, index=pd.to_datetime(fr['d']))
+    try:
+        import altair as alt
+        names = ["تاريخ الإبلاغ", "تاريخ التسجيل"]
+        long = chart_df.rename_axis("التاريخ").reset_index().melt("التاريخ", var_name="السلسلة", value_name="عدد الحالات")
+        long["ترتيب"] = long["السلسلة"].map({names[0]: 0, names[1]: 1})
+        color = alt.Color("السلسلة:N", scale=alt.Scale(domain=names, range=["#1F5FA8", "#1B998B"]), legend=alt.Legend(orient="bottom", title=None))
+        base = alt.Chart(long).encode(
+            x=alt.X("التاريخ:T", axis=alt.Axis(format="%d/%m", labelAngle=-45, title=None, tickCount=min(len(fr), 16))),
+            y=alt.Y("عدد الحالات:Q", axis=alt.Axis(title="عدد الحالات")),
+            color=color,
+            strokeDash=alt.StrokeDash("السلسلة:N", scale=alt.Scale(domain=names, range=[[1, 0], [6, 4]]), legend=None),
+            strokeWidth=alt.StrokeWidth("السلسلة:N", scale=alt.Scale(domain=names, range=[5, 2.5]), legend=None),
+            order=alt.Order("ترتيب:Q"),
+            tooltip=[alt.Tooltip("التاريخ:T", format="%d/%m/%Y"), "السلسلة:N", "عدد الحالات:Q"],
+        )
+        stretch(st.altair_chart, base.mark_line(point=True).properties(height=300))
+    except Exception:
+        st.line_chart(chart_df)
+    diff = fr[fr['report_n'] != fr['insert_n']]
+    if len(diff) == 0:
+        st.success("✅ كل الأيام متطابقة: تاريخ التسجيل = تاريخ الإبلاغ.")
+    else:
+        st.warning(f"⚠️ يوجد {len(diff)} يوم بها اختلاف بين تاريخ الإبلاغ وتاريخ التسجيل (تسجيل متأخر أو متقدم).")
+        with st.expander("عرض الأيام المختلفة"):
+            stretch(st.dataframe, daily_slide.daily_table(diff), hide_index=True)
+    fri = fr[fr['d'].dt.weekday == 4]
+    st.caption(f"عدد الأيام في الفترة: {len(fr)} (منها {len(fri)} يوم جمعة، سُجّلت فيها {int(fri['report_n'].sum())} حالة).")
 
-        st.markdown("---")
-        st.markdown("### 📞 الدعم")
-        st.markdown(f"للمساعدة والاستفسار اتصل أو راسل على واتساب: **{SUPPORT_PHONE}**")
-        st.markdown(f"[💬 مراسلة على واتساب]({SUPPORT_WA})")
+
+def main():
+    st.markdown(HERO_HTML, unsafe_allow_html=True)
+    render_sidebar()
 
     # Step 1: Upload Files
-    st.markdown("### 1️⃣ رفع ملفات Excel")
-    uploaded_files = st.file_uploader(
-        "اختر ملفات Excel (شهر أو ربع سنوي)",
-        type=['xlsx', 'xls'],
-        accept_multiple_files=True,
-        help="ملف واحد (شهري) أو 3 ملفات (ربع سنوي). يُقرأ شيت «محل سكن» (أو «محل السكن») تلقائياً"
-    )
-    
-    if uploaded_files:
-        st.success(f"✅ تم رفع {len(uploaded_files)} ملف")
-        
-        if st.button("📊 تحميل وتحليل البيانات", key="load_data"):
-            with st.spinner("جاري تحميل البيانات..."):
-                data = load_excel_files(uploaded_files)
-                
-                if data is not None:
-                    st.session_state.combined_data = data
-                    
-                    # Get unique units and add "all" option
-                    units = sorted(data['HealthOffice'].dropna().unique())
-                    units.insert(0, "المحلة ثان (كاملة)")
-                    st.session_state.health_units = units
-                    st.session_state.data_loaded = True
-                    
-                    st.success(f"✅ تم تحميل {len(data)} سجل من {len(units) - 1} وحدة صحية")
-                    for note in st.session_state.get('load_notes', []):
-                        st.caption("📄 " + note)
-                    if 'reptdate_gen' in data.columns:
-                        d0 = pd.to_datetime(data['reptdate_gen'], errors='coerce').min()
-                        d1 = pd.to_datetime(data['reptdate_gen'], errors='coerce').max()
-                        if pd.notna(d0) and pd.notna(d1):
-                            st.caption(f"📅 الفترة: من {d0:%d/%m/%Y} إلى {d1:%d/%m/%Y}")
-                    st.balloons()
-    
+    with card("upload"):
+        step(1, "رفع ملفات Excel", "ملف شهري واحد أو 3 ملفات (ربع سنوي) — يُقرأ شيت «محل سكن» (أو «محل السكن») تلقائياً")
+        uploaded_files = st.file_uploader(
+            "اختر ملفات Excel (شهر أو ربع سنوي)",
+            type=['xlsx', 'xls'],
+            accept_multiple_files=True,
+            help="ملف واحد (شهري) أو 3 ملفات (ربع سنوي). يُقرأ شيت «محل سكن» (أو «محل السكن») تلقائياً",
+            label_visibility="collapsed"
+        )
+
+        if uploaded_files:
+            st.success(f"✅ تم رفع {len(uploaded_files)} ملف")
+
+            if stretch(st.button, "📊 تحميل وتحليل البيانات", key="load_data"):
+                with st.spinner("جاري تحميل البيانات..."):
+                    data = load_excel_files(uploaded_files)
+
+                    if data is not None:
+                        st.session_state.combined_data = data
+                        st.session_state.report = None
+
+                        # Get unique units and add "all" option
+                        units = sorted(data['HealthOffice'].dropna().unique())
+                        units.insert(0, ALL_LABEL)
+                        st.session_state.health_units = units
+                        st.session_state.data_loaded = True
+                        st.session_state.load_info = {"notes": list(st.session_state.get('load_notes', []))}
+                        st.balloons()
+
+        info = st.session_state.get('load_info')
+        if st.session_state.data_loaded and info:
+            data = st.session_state.combined_data
+            d0, d1 = period_of(data)
+            st.markdown("**ملخص البيانات المحمّلة**")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("السجلات", f"{len(data):,}")
+            c2.metric("الوحدات", len(st.session_state.health_units) - 1)
+            c3.metric("الأسابيع", data['Week'].nunique())
+            c4.metric("الفترة", f"{d0:%d/%m} – {d1:%d/%m}" if pd.notna(d0) and pd.notna(d1) else "—", help=f"من {d0:%d/%m/%Y} إلى {d1:%d/%m/%Y}" if pd.notna(d0) and pd.notna(d1) else None)
+            for note in info["notes"]:
+                st.caption("📄 " + note)
+
     # Step 2: Select Unit
     if st.session_state.data_loaded:
-        st.markdown("---")
-        st.markdown("### 2️⃣ اختيار الوحدة الصحية")
-        
-        selected_unit = st.selectbox(
-            "اختر الوحدة:",
-            st.session_state.health_units,
-            help="اختر وحدة معينة أو 'المحلة ثان (كاملة)' للتحليل الشامل"
-        )
-        
+        with card("unit"):
+            step(2, "اختيار الوحدة الصحية", "اختر وحدة معينة أو «المحلة ثان (كاملة)» للتحليل الشامل")
+            selected_unit = st.selectbox(
+                "اختر الوحدة:",
+                st.session_state.health_units,
+                label_visibility="collapsed"
+            )
+            unit_data, report_name = slice_unit(selected_unit)
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("إجمالي السجلات", f"{len(unit_data):,}")
+            k2.metric("عدد الأمراض", unit_data['disease'].nunique())
+            k3.metric("الأقسام", unit_data['Department'].nunique())
+            k4.metric("الفئات العمرية", unit_data['AgeGroup'].nunique())
+            st.markdown("**معاينة التحليل اليومي** (كما ستظهر في الشريحة)")
+            show_preview(unit_data)
+
         # Step 3: Additional Info
-        st.markdown("---")
-        st.markdown("### 3️⃣ البيانات الإضافية (اختياري)")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            population = st.text_input("عدد السكان التقديري", placeholder="مثال: 15000")
-            monitor = st.text_input("مراقب الترصد", placeholder="مثال: أحمد محمد")
-            supervisor = st.text_input("مسئول الترصد", placeholder="مثال: د. محمد علي")
-        
-        with col2:
-            villages = st.text_input("القرى والعزب التابعة", placeholder="مثال: الهياتم، دنوشر")
-            director = st.text_input("مدير الوحدة", placeholder="مثال: د. فاطمة أحمد")
-        
+        with card("extra"):
+            step(3, "البيانات الإضافية", "اختياري — تظهر في شرائح الغلاف والمعلومات والبيانات الديموغرافية")
+            col1, col2 = st.columns(2)
+            with col1:
+                population = st.text_input("عدد السكان التقديري", placeholder="مثال: 15000")
+                monitor = st.text_input("مراقب الترصد", placeholder="مثال: أحمد محمد")
+                supervisor = st.text_input("مسئول الترصد", placeholder="مثال: د. محمد علي")
+            with col2:
+                villages = st.text_input("القرى والعزب التابعة", placeholder="مثال: الهياتم، دنوشر")
+                director = st.text_input("مدير الوحدة", placeholder="مثال: د. فاطمة أحمد")
+
         # Step 4: Generate Report
-        st.markdown("---")
-        st.markdown("### 4️⃣ إنشاء التقرير")
-        
-        if st.button("📄 إنشاء تقرير PowerPoint", key="generate", type="primary"):
-            with st.spinner("جاري إنشاء التقرير... قد يستغرق دقيقة"):
-                
-                # Get data for selected unit
-                if selected_unit == "المحلة ثان (كاملة)":
-                    unit_data = st.session_state.combined_data.copy()
-                    report_name = "إدارة المحلة ثان كاملة"
-                else:
-                    unit_data = st.session_state.combined_data[
-                        st.session_state.combined_data['HealthOffice'] == selected_unit
-                    ].copy()
-                    report_name = selected_unit
-                
-                # Generate report
-                report_file = generate_report(
-                    unit_data, 
-                    report_name,
-                    population, 
-                    villages,
-                    monitor, 
-                    supervisor, 
-                    director
+        with card("report"):
+            step(4, "إنشاء التقرير", "ملف PowerPoint جاهز للتنزيل")
+            if stretch(st.button, "📄 إنشاء تقرير PowerPoint", key="generate", type="primary"):
+                with st.spinner("جاري إنشاء التقرير... قد يستغرق دقيقة"):
+                    report_file = generate_report(unit_data, report_name, population, villages, monitor, supervisor, director)
+                    if report_file:
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        st.session_state.report = {
+                            "bytes": report_file.getvalue(),
+                            "filename": f"تقرير_{report_name.replace('/', '_')}_{timestamp}.pptx",
+                            "name": report_name,
+                            "stats": (len(unit_data), unit_data['disease'].nunique(), unit_data['Department'].nunique(), unit_data['AgeGroup'].nunique()),
+                        }
+
+            rep = st.session_state.get("report")
+            if rep:
+                st.markdown(f"<div class='success-box'>✅ تم إنشاء التقرير بنجاح — {rep['name']}</div>", unsafe_allow_html=True)
+                stretch(
+                    st.download_button,
+                    label="⬇️ تحميل التقرير PowerPoint",
+                    data=rep["bytes"],
+                    file_name=rep["filename"],
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
-                
-                if report_file:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"تقرير_{report_name.replace('/', '_')}_{timestamp}.pptx"
-                    
-                    # Download button
-                    st.markdown("<div class='success-box'>", unsafe_allow_html=True)
-                    st.markdown("### ✅ تم إنشاء التقرير بنجاح!")
-                    st.download_button(
-                        label="⬇️ تحميل التقرير PowerPoint",
-                        data=report_file,
-                        file_name=filename,
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                    )
-                    st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    # Statistics
-                    st.markdown("---")
-                    st.markdown("### 📊 إحصائيات التقرير")
-                    
-                    q1_data = unit_data
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("إجمالي السجلات", len(q1_data))
-                    col2.metric("عدد الأمراض", q1_data['disease'].nunique())
-                    col3.metric("الأقسام", q1_data['Department'].nunique())
-                    col4.metric("الفئات العمرية", q1_data['AgeGroup'].nunique())
-                    
-                    st.success("🎉 يمكنك الآن تحميل التقرير!")
+                st.caption("يبقى التقرير جاهزاً للتنزيل حتى لو غيّرت أي خيار، ولا حاجة لإعادة إنشائه.")
+
+    st.markdown(f"<div class='footer'>برنامج تحليل بيانات الترصد · النسخة {APP_VERSION} · للدعم: {SUPPORT_PHONE}</div>", unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
